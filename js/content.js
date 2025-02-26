@@ -355,6 +355,159 @@
         <head>
           <title>${documentTitle}</title>
           <link rel="stylesheet" href="${chrome.runtime.getURL('css/print-styles.css')}">
+          <style>
+            /* Additional styles for the report formatting */
+            .page-break {
+              page-break-before: always;
+            }
+            
+            .toc-container {
+              margin-bottom: 20px;
+            }
+            
+            .toc-title {
+              text-align: left;
+              font-size: 24px;
+              margin-bottom: 20px;
+              margin-top: 10px;
+              padding-left: 0;
+            }
+            
+            .toc-list {
+              list-style-type: none;
+              padding-left: 0;
+              padding-right: 40px;
+            }
+            
+            .toc-item {
+              margin-bottom: 8px;
+              line-height: 1.4;
+            }
+            
+            .toc-item a {
+              text-decoration: none;
+              color: #1a1a1a;
+            }
+            
+            .toc-item a:hover {
+              text-decoration: underline;
+            }
+            
+            .toc-level-1 {
+              font-weight: bold;
+            }
+            
+            .toc-level-2 {
+              padding-left: 20px;
+              font-weight: normal;
+            }
+            
+            .toc-level-3 {
+              padding-left: 40px;
+              font-size: 0.9em;
+            }
+            
+            /* Add dotted line for TOC */
+            .toc-item {
+              display: flex;
+              align-items: baseline;
+              width: 100%;
+            }
+            
+            .toc-item a {
+              position: relative;
+              overflow: hidden;
+            }
+            
+            .toc-item a::after {
+              content: "";
+              position: absolute;
+              bottom: 5px;
+              margin-left: 5px;
+              width: 100%;
+              height: 1px;
+              border-bottom: 1px dotted #999;
+            }
+            
+            .table-of-contents-container {
+              padding: 10px 0 20px 0;
+              margin-top: 0;
+            }
+            
+            /* Ensure first page doesn't have page break */
+            .pdf-container > *:first-child {
+              page-break-before: avoid !important;
+            }
+            
+            /* Main content */
+            #research-content {
+              padding: 0 40px;
+            }
+            
+            /* Remove default margins that might cause extra space */
+            body.pdf-print {
+              margin: 0;
+              padding: 0;
+            }
+            
+            .pdf-container {
+              margin-top: 0;
+              padding-top: 0;
+            }
+            
+            /* Date generated */
+            .date-generated {
+              padding: 10px 40px;
+              text-align: right;
+              font-style: italic;
+              color: #666;
+            }
+
+            /* Additional styles for the document title */
+            .document-title-container {
+              text-align: center;
+              margin-top: 40px;
+              margin-bottom: 30px;
+              padding: 0 40px;
+            }
+            
+            .document-title-container h1 {
+              font-size: 28px;
+              font-weight: bold;
+              margin: 0;
+              padding: 0;
+            }
+
+            /* Heading page breaks - cleaner with less whitespace */
+            h1, h2, h3, h4, h5, h6 {
+              margin-top: 0;
+              padding-top: 16px;
+            }
+
+            /* Remove any potential gap above page break headings */
+            [style*="page-break-before"], [style*="break-before"] {
+              margin-top: 0 !important;
+              border-top: none !important;
+              padding-top: 16px !important;
+            }
+
+            /* Ensure content is snug against headings */
+            h1 + *, h2 + *, h3 + *, h4 + *, h5 + *, h6 + * {
+              margin-top: 12px;
+            }
+
+            /* Fix for browsers that add extra space at page breaks */
+            @media print {
+              body {
+                margin: 0;
+                padding: 0;
+              }
+              
+              @page {
+                margin: 0.5in;
+              }
+            }
+          </style>
         </head>
         <body class="pdf-print">
           <div class="date-generated">Generated on ${new Date().toLocaleDateString()}</div>
@@ -386,8 +539,190 @@
     const unnecessaryElements = clonedContent.querySelectorAll('.citation-actions, .cite-expanded');
     unnecessaryElements.forEach((el) => el.remove());
 
+    // Extract the document title (first H1) if it exists
+    const documentTitle = extractDocumentTitle(clonedContent);
+    
+    // Create table of contents
+    const tocElement = createTableOfContents(clonedContent);
+    
+    // Add page breaks for main sections
+    addPageBreaksToMainSections(clonedContent);
+    
+    // Add document title at the top if found
+    if (documentTitle) {
+      container.appendChild(documentTitle);
+    }
+    
+    // Add the table of contents after the title
+    if (tocElement) {
+      const tocContainer = document.createElement('div');
+      tocContainer.className = 'table-of-contents-container';
+      tocContainer.appendChild(tocElement);
+      
+      // Instead of using a page break div, add a class to the first section
+      const firstContentSection = getFirstMainSection(clonedContent);
+      if (firstContentSection) {
+        firstContentSection.classList.add('first-content-section');
+      }
+      
+      container.appendChild(tocContainer);
+    }
+
     container.appendChild(clonedContent);
     return container;
+  }
+
+  /**
+   * Extracts the document title from content and removes it from the original content.
+   * @param {Node} content
+   * @returns {HTMLElement|null}
+   */
+  function extractDocumentTitle(content) {
+    const firstH1 = content.querySelector('h1');
+    if (!firstH1) return null;
+    
+    // Create a title container
+    const titleContainer = document.createElement('div');
+    titleContainer.className = 'document-title-container';
+    
+    // Clone the H1 element
+    const titleElement = firstH1.cloneNode(true);
+    titleContainer.appendChild(titleElement);
+    
+    // Remove the original H1 from the content
+    if (firstH1.parentNode) {
+      firstH1.parentNode.removeChild(firstH1);
+    }
+    
+    return titleContainer;
+  }
+
+  /**
+   * Creates a table of contents based on headings in the content.
+   * @param {Node} content
+   * @returns {HTMLElement|null}
+   */
+  function createTableOfContents(content) {
+    log('Creating table of contents');
+    
+    // Find all headings
+    const headings = content.querySelectorAll('h1, h2, h3, h4, h5, h6');
+    if (headings.length === 0) return null;
+    
+    // Determine the highest level heading (h1 or h2)
+    let highestLevel = 6;
+    headings.forEach(heading => {
+      const level = parseInt(heading.tagName.substring(1));
+      if (level < highestLevel) highestLevel = level;
+    });
+    
+    // Create TOC container
+    const tocContainer = document.createElement('div');
+    tocContainer.className = 'toc-container';
+    
+    // Add title - now using H2 instead of H1
+    const tocTitle = document.createElement('h2');
+    tocTitle.className = 'toc-title';
+    tocTitle.textContent = 'Table of Contents';
+    tocContainer.appendChild(tocTitle);
+    
+    // Create TOC list
+    const tocList = document.createElement('ul');
+    tocList.className = 'toc-list';
+    
+    // Add IDs to headings if they don't have them
+    let idCounter = 1;
+    headings.forEach(heading => {
+      if (!heading.id) {
+        heading.id = `section-${idCounter++}`;
+      }
+    });
+    
+    // Create TOC entries
+    headings.forEach(heading => {
+      const level = parseInt(heading.tagName.substring(1));
+      
+      // Only include headings that are relevant
+      if (level <= highestLevel + 2) { // Include up to 2 levels deeper than the highest level
+        const listItem = document.createElement('li');
+        listItem.className = `toc-item toc-level-${level - highestLevel + 1}`;
+        
+        const link = document.createElement('a');
+        link.href = `#${heading.id}`;
+        link.textContent = heading.textContent;
+        
+        listItem.appendChild(link);
+        tocList.appendChild(listItem);
+      }
+    });
+    
+    tocContainer.appendChild(tocList);
+    return tocContainer;
+  }
+
+  /**
+   * Gets the first main section in the content.
+   * @param {Node} content
+   * @returns {Element|null}
+   */
+  function getFirstMainSection(content) {
+    // Find all headings
+    const headings = content.querySelectorAll('h1, h2, h3, h4, h5, h6');
+    if (headings.length === 0) return null;
+    
+    // Determine the highest level heading (h1 or h2)
+    let highestLevel = 6;
+    headings.forEach(heading => {
+      const level = parseInt(heading.tagName.substring(1));
+      if (level < highestLevel) highestLevel = level;
+    });
+    
+    // Find the first heading of highest level
+    for (let heading of headings) {
+      const level = parseInt(heading.tagName.substring(1));
+      if (level === highestLevel) {
+        return heading;
+      }
+    }
+    
+    return null;
+  }
+
+  /**
+   * Adds page break elements before main sections.
+   * @param {Node} content
+   */
+  function addPageBreaksToMainSections(content) {
+    log('Adding page breaks to main sections');
+    
+    // Find all headings
+    const headings = content.querySelectorAll('h1, h2, h3, h4, h5, h6');
+    if (headings.length === 0) return;
+    
+    // Determine the highest level heading (h1 or h2)
+    let highestLevel = 6;
+    headings.forEach(heading => {
+      const level = parseInt(heading.tagName.substring(1));
+      if (level < highestLevel) highestLevel = level;
+    });
+    
+    // Add page breaks directly to the headings (except the first one)
+    let isFirst = true;
+    headings.forEach(heading => {
+      const level = parseInt(heading.tagName.substring(1));
+      
+      if (level === highestLevel) {
+        if (isFirst) {
+          // For the first main section, apply a special class
+          heading.classList.add('first-main-section');
+          isFirst = false;
+        } else {
+          // Apply page break directly to the heading instead of creating a separate div
+          heading.style.pageBreakBefore = 'always';
+          heading.style.breakBefore = 'page'; // Modern property
+        }
+      }
+    });
   }
 
   /**
