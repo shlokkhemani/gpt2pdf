@@ -171,10 +171,10 @@ body.pdf-print {
 /* Tooltip styles */
 .pdf-tooltip {
   position: absolute;
-  top: 100%;
+  bottom: 100%;
   left: 50%;
   transform: translateX(-50%);
-  margin-top: 8px;
+  margin-bottom: 8px;
   background-color: #000000;
   color: #ffffff;
   padding: 8px 12px;
@@ -182,7 +182,7 @@ body.pdf-print {
   font-size: 14px;
   font-weight: 500;
   white-space: nowrap;
-  z-index: 9999;
+  z-index: 99999;
   opacity: 0;
   transition: opacity 0.1s ease-in-out;
   pointer-events: none;
@@ -190,7 +190,7 @@ body.pdf-print {
 
 .pdf-tooltip-arrow {
   position: absolute;
-  top: -4px;
+  bottom: -4px;
   left: 50%;
   transform: translateX(-50%) rotate(45deg);
   width: 8px;
