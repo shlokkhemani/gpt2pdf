@@ -2,7 +2,7 @@
 
 A Chrome extension that adds a PDF export button to ChatGPT's research reports, allowing you to save your AI research in a clean, well-formatted PDF document.
 
-![PDF Export Button](placeholder-for-screenshot.png)
+[![YouTube Video Title](https://img.youtube.com/vi/rdVpcXX-ivQ/0.jpg)](https://www.youtube.com/watch?v=rdVpcXX-ivQ&t=2s)
 
 ## Features
 
@@ -27,10 +27,6 @@ A Chrome extension that adds a PDF export button to ChatGPT's research reports, 
 3. When the report is complete, look for the PDF icon button near the "Research completed in..." text
 4. Click the button to generate a PDF
 5. Use your browser's print dialog to save or print the report
-
-## Demo
-
-[Video demonstration coming soon]
 
 ## License
 
