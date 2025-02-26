@@ -1,4 +1,6 @@
-/* Styles applied to the PDF content */
+/* ---------------------
+   PDF Container
+---------------------- */
 .pdf-container {
   font-family: 'Arial', sans-serif;
   font-size: 12pt;
@@ -11,26 +13,26 @@
 }
 
 /* Force all text to be black */
-.pdf-container h1, 
-.pdf-container h2, 
-.pdf-container h3, 
-.pdf-container h4, 
-.pdf-container p, 
-.pdf-container li, 
-.pdf-container td, 
-.pdf-container th, 
-.pdf-container span, 
+.pdf-container h1,
+.pdf-container h2,
+.pdf-container h3,
+.pdf-container h4,
+.pdf-container p,
+.pdf-container li,
+.pdf-container td,
+.pdf-container th,
+.pdf-container span,
 .pdf-container div {
   color: #000000 !important;
   opacity: 1 !important;
 }
 
-/* Make headers extra bold and black */
+/* ---------------------
+   Headings
+---------------------- */
 .pdf-container h1 {
   font-size: 24pt;
-  color: #000000 !important;
   font-weight: 900 !important;
-  opacity: 1 !important;
   margin-top: 20px;
   margin-bottom: 15px;
   page-break-after: avoid;
@@ -38,9 +40,7 @@
 
 .pdf-container h2 {
   font-size: 20pt;
-  color: #000000 !important;
   font-weight: 800 !important;
-  opacity: 1 !important;
   margin-top: 18px;
   margin-bottom: 12px;
   page-break-after: avoid;
@@ -48,20 +48,22 @@
 
 .pdf-container h3 {
   font-size: 16pt;
-  color: #000000 !important;
   font-weight: 700 !important;
-  opacity: 1 !important;
   margin-top: 15px;
   margin-bottom: 10px;
   page-break-after: avoid;
 }
 
+/* ---------------------
+   Text & Lists
+---------------------- */
 .pdf-container p {
   margin-bottom: 10px;
   text-align: justify;
 }
 
-.pdf-container ul, .pdf-container ol {
+.pdf-container ul,
+.pdf-container ol {
   margin-left: 20px;
   margin-bottom: 15px;
 }
@@ -70,7 +72,11 @@
   margin-bottom: 5px;
 }
 
-.pdf-container a, .pdf-container .citation-link {
+/* ---------------------
+   Links & Citations
+---------------------- */
+.pdf-container a,
+.pdf-container .citation-link {
   color: #0055aa;
   text-decoration: underline;
   background-color: #f5f5f5;
@@ -78,7 +84,7 @@
   border-radius: 2px;
 }
 
-.pdf-container div.citations, 
+.pdf-container div.citations,
 .pdf-container div[data-state="closed"],
 .pdf-container .relative.inline-flex.items-center {
   background-color: #f5f5f5;
@@ -96,6 +102,9 @@
   font-weight: 500;
 }
 
+/* ---------------------
+   Blockquote
+---------------------- */
 .pdf-container blockquote {
   border-left: 4px solid #cccccc;
   padding-left: 15px;
@@ -105,13 +114,17 @@
   padding: 10px 15px;
 }
 
+/* ---------------------
+   Tables
+---------------------- */
 .pdf-container table {
   border-collapse: collapse;
   width: 100%;
   margin: 20px 0;
 }
 
-.pdf-container th, .pdf-container td {
+.pdf-container th,
+.pdf-container td {
   border: 1px solid #dddddd;
   padding: 8px;
   text-align: left;
@@ -127,7 +140,11 @@
   background-color: #f9f9f9;
 }
 
-.pdf-container code, .pdf-container pre {
+/* ---------------------
+   Code
+---------------------- */
+.pdf-container code,
+.pdf-container pre {
   font-family: 'Consolas', 'Monaco', monospace;
   background-color: #f5f5f5;
   border: 1px solid #eeeeee;
@@ -142,41 +159,44 @@
   margin: 15px 0;
 }
 
-/* Ensure citations are properly styled */
+/* ---------------------
+   Citations
+---------------------- */
 .pdf-container .citation-link {
   font-size: 9pt;
   vertical-align: super;
   color: #0066cc;
 }
 
-/* Ensure page breaks don't occur in the middle of essential elements only */
-.pdf-container h1, 
-.pdf-container h2, 
-.pdf-container h3, 
-.pdf-container table, 
+/* ---------------------
+   Page-break rules
+---------------------- */
+.pdf-container h1,
+.pdf-container h2,
+.pdf-container h3,
+.pdf-container table,
 .pdf-container figure {
   page-break-inside: avoid;
 }
 
-/* Remove these rules that cause too many breaks */
-.pdf-container h4, 
-.pdf-container li, 
-.pdf-container figcaption {
-  /* Removed page-break-inside: avoid; */
-}
+/* Removed rules that caused frequent page breaks:
+   .pdf-container h4,
+   .pdf-container li,
+   .pdf-container figcaption,
+   .pdf-container section
+*/
 
-/* Remove the section page break rule */
-.pdf-container section {
-  /* Removed page-break-after: always; */
-}
-
-/* Add class for elements that should never break */
+/* ---------------------
+   No-break class
+---------------------- */
 .pdf-container .no-break {
   page-break-inside: avoid;
 }
 
-/* Properly handle images */
+/* ---------------------
+   Images
+---------------------- */
 .pdf-container img {
   max-width: 100%;
   height: auto;
-} 
+}

@@ -3,14 +3,18 @@
   "name": "ChatGPT Research Report Exporter",
   "version": "1.0.0",
   "description": "Export ChatGPT research reports as clean, readable PDF files",
-
   "content_scripts": [
     {
       "matches": ["https://chatgpt.com/*"],
       "js": ["js/content.js"],
-      "css": ["css/pdf-styles.css"]
+      "css": ["css/pdf-styles.css", "css/print-styles.css"]
     }
   ],
-  "permissions": ["downloads"],
+  "web_accessible_resources": [
+    {
+      "resources": ["css/print-styles.css"],
+      "matches": ["<all_urls>"]
+    }
+  ],
   "host_permissions": ["https://chatgpt.com/*"]
-} 
+}

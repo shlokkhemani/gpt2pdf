@@ -1,0 +1,228 @@
+/* Base styles for print window */
+body.pdf-print {
+  font-family: Arial, sans-serif;
+  line-height: 1.5;
+  color: #000000;
+  margin: 40px;
+  font-size: 12pt;
+}
+
+.date-generated {
+  font-style: italic;
+  color: #555;
+  margin-bottom: 20px;
+}
+
+/* Heading styles */
+.pdf-print h1 {
+  font-size: 24pt;
+  color: #000000;
+  font-weight: 900;
+  margin-top: 20px;
+  margin-bottom: 15px;
+  page-break-after: avoid;
+}
+
+.pdf-print h2 {
+  font-size: 20pt;
+  color: #000000;
+  font-weight: 800;
+  margin-top: 18px;
+  margin-bottom: 12px;
+  page-break-after: avoid;
+}
+
+.pdf-print h3 {
+  font-size: 16pt;
+  color: #000000;
+  font-weight: 700;
+  margin-top: 15px;
+  margin-bottom: 10px;
+  page-break-after: avoid;
+}
+
+/* Paragraph and list styles */
+.pdf-print p {
+  margin-bottom: 10px;
+  text-align: justify;
+}
+.pdf-print ul, 
+.pdf-print ol {
+  margin-left: 20px;
+  margin-bottom: 15px;
+}
+.pdf-print li {
+  margin-bottom: 5px;
+}
+
+/* Link styles */
+.pdf-print a {
+  color: #0055aa;
+  text-decoration: underline;
+}
+
+/* Citation styles (badges) */
+.pdf-print .citation-item, 
+.pdf-print .simplified-citation, 
+.pdf-print sup, 
+.pdf-print .citation-link, 
+.pdf-print .citation-badge {
+  display: inline-block !important;
+  color: #0055aa !important;
+  background-color: #f2f7ff !important;
+  border: 1px solid #d0e3ff !important;
+  border-radius: 4px !important;
+  font-size: 0.8em !important;
+  padding: 0px 4px !important;
+  margin: 0 2px !important;
+  vertical-align: super !important;
+  line-height: 1.2 !important;
+  text-decoration: none !important;
+  white-space: nowrap !important;
+  font-weight: normal !important;
+}
+
+.pdf-print .relative.inline-flex.items-center,
+.pdf-print .inline-flex,
+.pdf-print [data-citation-target] {
+  display: inline !important;
+  white-space: nowrap !important;
+  margin-left: 3px !important;
+}
+
+/* Tables */
+.pdf-print table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 20px 0;
+  page-break-inside: avoid;
+}
+.pdf-print th, 
+.pdf-print td {
+  border: 1px solid #dddddd;
+  padding: 8px;
+  text-align: left;
+}
+.pdf-print th {
+  background-color: #eeeeee;
+  color: #000000;
+  font-weight: bold;
+}
+.pdf-print tr:nth-child(even) {
+  background-color: #f9f9f9;
+}
+
+/* Code blocks */
+.pdf-print code, 
+.pdf-print pre {
+  font-family: 'Consolas', 'Monaco', monospace;
+  background-color: #f5f5f5;
+  border: 1px solid #eeeeee;
+  border-radius: 3px;
+  padding: 2px 4px;
+  font-size: 90%;
+}
+.pdf-print pre {
+  padding: 10px;
+  overflow-x: auto;
+  margin: 15px 0;
+  white-space: pre-wrap;
+}
+
+/* Page break control */
+.pdf-print .page-break {
+  page-break-after: always;
+}
+
+/* Print media query */
+@media print {
+  .pdf-print {
+    margin: 0;
+    padding: 15mm;
+  }
+  .pdf-print a {
+    color: #000000;
+  }
+  .pdf-print h1, 
+  .pdf-print h2, 
+  .pdf-print h3, 
+  .pdf-print h4, 
+  .pdf-print table, 
+  .pdf-print figure, 
+  .pdf-print img {
+    page-break-inside: avoid;
+  }
+}
+
+/* Blockquote */
+.pdf-print blockquote {
+  border-left: 4px solid #cccccc;
+  padding: 10px 15px;
+  margin: 15px 0;
+  background-color: #f9f9f9;
+}
+
+/* Images */
+.pdf-print img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Tooltip styles */
+.pdf-tooltip {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-top: 8px;
+  background-color: #000000;
+  color: #ffffff;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+  z-index: 9999;
+  opacity: 0;
+  transition: opacity 0.1s ease-in-out;
+  pointer-events: none;
+}
+
+.pdf-tooltip-arrow {
+  position: absolute;
+  top: -4px;
+  left: 50%;
+  transform: translateX(-50%) rotate(45deg);
+  width: 8px;
+  height: 8px;
+  background-color: #000000;
+}
+
+/* Loading indicator */
+#pdf-export-loading {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 10px 20px;
+  background-color: rgba(0, 0, 0, 0.7);
+  color: white;
+  border-radius: 5px;
+  z-index: 9999;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.loading-spinner {
+  animation: spin 1s linear infinite;
+}
+
+.loading-container {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+} 

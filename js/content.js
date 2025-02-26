@@ -2,109 +2,145 @@
  * ChatGPT Research Report Exporter
  * A Chrome extension that adds a PDF export button to ChatGPT's research reports
  */
-
 (function() {
-  // Configuration
+  // ---------------------
+  // Configuration and Helpers
+  // ---------------------
   const config = {
     debug: false, // Set to false for production
     exportButtonId: 'research-pdf-export-button',
     researchMarkerText: 'Research completed in',
     loadingIndicatorId: 'pdf-export-loading'
   };
-  
-  // Log helper - only logs when debug is true
+
+  /** Logs messages only if config.debug is true. */
   const log = (message) => {
-    if (config.debug) console.log(`[PDF Exporter] ${message}`);
+    if (config.debug) {
+      console.log(`[PDF Exporter] ${message}`);
+    }
   };
 
-  /**
-   * Main initialization function
-   */
+  // ---------------------
+  // Initialization
+  // ---------------------
   function init() {
     log('Initializing Research Report Exporter');
-    // Set up the mutation observer to detect when research reports are loaded
+
+    // Observe DOM changes for research reports
     setupObserver();
-    // Also check on load in case the report is already present
+
+    // Check if a research report might already be present
     checkForResearchReport();
   }
 
   /**
-   * Sets up a mutation observer to detect when a research report appears
+   * Sets up a MutationObserver to detect when a research report is loaded.
    */
   function setupObserver() {
     log('Setting up observer');
     const observer = new MutationObserver((mutations) => {
-      const shouldCheck = mutations.some(mutation => {
-        // Check for text nodes or elements that might contain our marker
-        return Array.from(mutation.addedNodes).some(node => {
-          return node.nodeType === Node.TEXT_NODE || 
-                (node.nodeType === Node.ELEMENT_NODE && node.textContent.includes(config.researchMarkerText));
-        });
-      });
-      
+      const shouldCheck = mutations.some((mutation) =>
+        Array.from(mutation.addedNodes).some((node) =>
+          node.nodeType === Node.TEXT_NODE ||
+          (node.nodeType === Node.ELEMENT_NODE &&
+            node.textContent.includes(config.researchMarkerText))
+        )
+      );
+
       if (shouldCheck) {
         checkForResearchReport();
       }
     });
-    
-    observer.observe(document.body, { 
-      childList: true, 
-      subtree: true, 
-      characterData: true 
+
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+      characterData: true
     });
   }
-  
+
   /**
-   * Checks if a research report is present on the page
+   * Checks if a research report is present on the page and injects the export button if needed.
    */
   function checkForResearchReport() {
     log('Checking for research report');
+
     // Look for the research marker text
     const hasResearchReport = document.body.textContent.includes(config.researchMarkerText);
-    
-    if (hasResearchReport) {
-      log('Research report detected');
-      
-      // Check if button already exists anywhere on the page
-      const existingButton = document.getElementById(config.exportButtonId);
-      if (existingButton) {
-        log('Export button already exists');
-        return; // Don't add another button
-      }
-      
-      // Find all containers where we might insert the button
-      const containers = document.querySelectorAll('.flex.items-center');
-      let buttonAdded = false;
-      
-      // Sort containers by proximity to the research marker
-      const sortedContainers = Array.from(containers).filter(container => {
-        // Check if this container is a toolbar (has button elements)
-        const hasButtons = container.querySelectorAll('button').length > 0;
-        
-        // Check if we're in the right context (near a research marker)
-        const isNearResearchMarker = container.textContent.includes(config.researchMarkerText) || 
-                                   (container.closest('article') && 
-                                    container.closest('article').textContent.includes(config.researchMarkerText));
-        
-        return hasButtons && isNearResearchMarker;
-      });
-      
-      // Use only the first valid container (most specific to the research marker)
-      if (sortedContainers.length > 0) {
-        insertExportButton(sortedContainers[0]);
-      }
+    if (!hasResearchReport) return;
+
+    log('Research report detected');
+
+    // Avoid creating multiple buttons
+    const existingButton = document.getElementById(config.exportButtonId);
+    if (existingButton) {
+      log('Export button already exists');
+      return;
+    }
+
+    // Insert the button in the most relevant container
+    addExportButtonToRelevantContainer();
+  }
+
+  /**
+   * Finds the most relevant container near the research marker and inserts the export button.
+   */
+  function addExportButtonToRelevantContainer() {
+    // Gather all potential containers
+    const containers = document.querySelectorAll('.flex.items-center');
+
+    // Filter to containers that have buttons and are near the marker
+    const filtered = Array.from(containers).filter((container) => {
+      const hasButtons = container.querySelectorAll('button').length > 0;
+      const article = container.closest('article');
+      const nearResearchMarker =
+        container.textContent.includes(config.researchMarkerText) ||
+        (article && article.textContent.includes(config.researchMarkerText));
+      return hasButtons && nearResearchMarker;
+    });
+
+    // Insert into the first valid container
+    if (filtered.length > 0) {
+      insertExportButton(filtered[0]);
     }
   }
-  
+
   /**
-   * Inserts the PDF export button into the UI
+   * Inserts the "Export to PDF" button into the specified container.
+   * Removes any previous instance of the export button first.
    */
   function insertExportButton(container) {
     log('Inserting export button');
-    
+
     // Remove any existing export buttons
+    removeExistingExportButtons();
+
+    // Create the button and tooltip
+    const buttonSpan = document.createElement('span');
+    buttonSpan.className = '';
+    buttonSpan.dataset.state = 'closed';
+
+    const tooltipContainer = document.createElement('div');
+    tooltipContainer.style.position = 'relative';
+
+    const tooltip = createTooltipElement('Export to PDF');
+    tooltipContainer.appendChild(tooltip);
+
+    const buttonElement = createButtonElement();
+    tooltipContainer.appendChild(buttonElement);
+
+    buttonSpan.appendChild(tooltipContainer);
+    container.appendChild(buttonSpan);
+
+    log('Export button inserted');
+  }
+
+  /**
+   * Removes existing export buttons from the DOM.
+   */
+  function removeExistingExportButtons() {
     const existingButtons = document.querySelectorAll(`#${config.exportButtonId}`);
-    existingButtons.forEach(button => {
+    existingButtons.forEach((button) => {
       const buttonContainer = button.closest('span[data-state]');
       if (buttonContainer) {
         buttonContainer.remove();
@@ -112,677 +148,383 @@
         button.remove();
       }
     });
-    
-    // Create button element
-    const buttonSpan = document.createElement('span');
-    buttonSpan.className = '';
-    buttonSpan.dataset.state = 'closed';
-    
-    // Create tooltip container
-    const tooltipContainer = document.createElement('div');
-    tooltipContainer.style.position = 'relative';
-    
-    // Create the actual tooltip
+  }
+
+  /**
+   * Creates the tooltip element for the export button.
+   * @param {string} text - Tooltip text
+   * @returns {HTMLDivElement}
+   */
+  function createTooltipElement(text) {
     const tooltip = document.createElement('div');
-    tooltip.textContent = 'Export to PDF';
-    tooltip.style.position = 'absolute';
-    tooltip.style.top = '100%';
-    tooltip.style.left = '50%';
-    tooltip.style.transform = 'translateX(-50%)';
-    tooltip.style.marginTop = '8px';
-    tooltip.style.backgroundColor = '#000000';
-    tooltip.style.color = '#ffffff';
-    tooltip.style.padding = '8px 12px';
-    tooltip.style.borderRadius = '6px';
-    tooltip.style.fontSize = '14px';
-    tooltip.style.fontWeight = '500';
-    tooltip.style.whiteSpace = 'nowrap';
-    tooltip.style.zIndex = '9999';
-    tooltip.style.opacity = '0';
-    tooltip.style.transition = 'opacity 0.1s ease-in-out';
-    tooltip.style.pointerEvents = 'none';
+    tooltip.textContent = text;
+    tooltip.className = 'pdf-tooltip';
     
-    // Add an arrow to the tooltip
+    // Tooltip arrow
     const tooltipArrow = document.createElement('div');
-    tooltipArrow.style.position = 'absolute';
-    tooltipArrow.style.top = '-4px';
-    tooltipArrow.style.left = '50%';
-    tooltipArrow.style.transform = 'translateX(-50%) rotate(45deg)';
-    tooltipArrow.style.width = '8px';
-    tooltipArrow.style.height = '8px';
-    tooltipArrow.style.backgroundColor = '#000000';
+    tooltipArrow.className = 'pdf-tooltip-arrow';
     
     tooltip.appendChild(tooltipArrow);
-    tooltipContainer.appendChild(tooltip);
-    
+    return tooltip;
+  }
+
+  /**
+   * Creates the main export button with its icon and event handlers.
+   * @returns {HTMLButtonElement}
+   */
+  function createButtonElement() {
     const buttonElement = document.createElement('button');
     buttonElement.id = config.exportButtonId;
     buttonElement.className = 'rounded-lg text-token-text-secondary hover:bg-token-main-surface-secondary';
     buttonElement.setAttribute('aria-label', 'Export to PDF');
-    
-    // Create button content
+
+    // Button icon
     const buttonContent = document.createElement('span');
     buttonContent.className = 'flex h-[30px] w-[30px] items-center justify-center';
-    
-    // Create SVG icon for the button
     buttonContent.innerHTML = `
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="icon-md-heavy">
-        <path fill-rule="evenodd" clip-rule="evenodd" d="M7 2a2 2 0 00-2 2v16a2 2 0 002 2h10a2 2 0 002-2V7.414A2 2 0 0018.414 6L14 1.586A2 2 0 0012.586 1H7zm0 2v16h10V8h-4V4H7zm9.586 1L14 3.414V6h2.586zM12 11a1 1 0 10-2 0v3H9a1 1 0 100 2h5a1 1 0 100-2h-1v-3a1 1 0 00-1-1z" fill="currentColor"></path>
+      <svg
+        width="24"
+        height="24"
+        viewBox="0 0 24 24"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+        class="icon-md-heavy"
+      >
+        <path
+          fill-rule="evenodd"
+          clip-rule="evenodd"
+          d="M7 2a2 2 0 00-2 2v16a2 2 0 002 2h10a2 2 0 002-2V7.414A2 2 0 0018.414 6L14 1.586A2 2 0 0012.586 1H7zm0 2v16h10V8h-4V4H7zm9.586 1L14 3.414V6h2.586zM12 11a1 1 0 10-2 0v3H9a1 1 0 100 2h5a1 1 0 100-2h-1v-3a1 1 0 00-1-1z"
+          fill="currentColor"
+        ></path>
       </svg>
     `;
-    
     buttonElement.appendChild(buttonContent);
-    
-    // Add event listeners for tooltip
+
+    // Tooltip interactions
     buttonElement.addEventListener('mouseenter', () => {
-      tooltip.style.opacity = '1';
+      buttonElement.previousSibling.style.opacity = '1'; // Show tooltip
     });
-    
     buttonElement.addEventListener('mouseleave', () => {
-      tooltip.style.opacity = '0';
+      buttonElement.previousSibling.style.opacity = '0'; // Hide tooltip
     });
-    
-    // Add click event listener for PDF generation
+
+    // Click: Export to PDF
     buttonElement.addEventListener('click', handleExportButtonClick);
-    
-    // Add elements to container
-    tooltipContainer.appendChild(buttonElement);
-    buttonSpan.appendChild(tooltipContainer);
-    
-    // Add the button to the container
-    container.appendChild(buttonSpan);
-    
-    log('Export button inserted');
+
+    return buttonElement;
   }
-  
+
+  // ---------------------
+  // Export Flow
+  // ---------------------
+
   /**
-   * Creates and shows a loading indicator
-   */
-  function showLoadingIndicator() {
-    // Remove any existing indicator
-    const existingIndicator = document.getElementById(config.loadingIndicatorId);
-    if (existingIndicator) existingIndicator.remove();
-    
-    // Create loading indicator
-    const indicator = document.createElement('div');
-    indicator.id = config.loadingIndicatorId;
-    indicator.style.position = 'fixed';
-    indicator.style.top = '20px';
-    indicator.style.left = '50%';
-    indicator.style.transform = 'translateX(-50%)';
-    indicator.style.padding = '10px 20px';
-    indicator.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
-    indicator.style.color = 'white';
-    indicator.style.borderRadius = '5px';
-    indicator.style.zIndex = '9999';
-    indicator.style.boxShadow = '0 2px 10px rgba(0, 0, 0, 0.2)';
-    indicator.innerHTML = `
-      <div style="display: flex; align-items: center; gap: 10px;">
-        <svg width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="animation: spin 1s linear infinite;">
-          <style>
-            @keyframes spin {
-              0% { transform: rotate(0deg); }
-              100% { transform: rotate(360deg); }
-            }
-          </style>
-          <circle cx="12" cy="12" r="10" stroke="white" stroke-width="4" fill="none" stroke-dasharray="30 10" />
-        </svg>
-        <span>Generating PDF...</span>
-      </div>
-    `;
-    
-    document.body.appendChild(indicator);
-  }
-  
-  /**
-   * Removes the loading indicator
-   */
-  function hideLoadingIndicator() {
-    const indicator = document.getElementById(config.loadingIndicatorId);
-    if (indicator) indicator.remove();
-  }
-  
-  /**
-   * Handle the export button click
+   * Handles the export button click: shows loading, extracts content, and generates PDF.
    */
   function handleExportButtonClick() {
     log('Export button clicked');
-    
-    // Show loading indicator
     showLoadingIndicator();
-    
-    // Extract the research content
+
     const content = extractResearchContent();
-    
     if (!content) {
       log('No content found to export');
       hideLoadingIndicator();
       alert('Could not find research content to export. Please make sure the research report is fully loaded.');
       return;
     }
-    
-    // Generate PDF from the content
+
     generatePDF(content);
   }
-  
+
   /**
-   * Extracts the research report content from the page
+   * Extracts the research report content from the page using known markers/structures.
+   * @returns {Node|null} Cloned DOM content for the research report
    */
   function extractResearchContent() {
     log('Extracting research content');
-    
-    // Find the research marker
+
+    // Find the button(s) that contain the marker text
     const researchMarkers = Array.from(document.querySelectorAll('button'))
-      .filter(el => el.textContent.includes(config.researchMarkerText));
-    
+      .filter((el) => el.textContent.includes(config.researchMarkerText));
+
     if (researchMarkers.length === 0) {
       log('Research marker not found');
       return null;
     }
-    
-    // Get the article element
+
     const articleElement = researchMarkers[0].closest('article');
-    
     if (!articleElement) {
       log('Article element not found');
       return null;
     }
-    
-    // Find the research content - try multiple selectors to be more robust
+
+    // Primary selector
     let researchContent = articleElement.querySelector('.deep-research-result');
-    
-    // If the primary selector fails, try alternative selectors
+
+    // Fallback #1: Look near the "Research completed" text
     if (!researchContent) {
-      // Try to find content after the "Research completed" text
       const completedTextDiv = Array.from(articleElement.querySelectorAll('div'))
-        .find(div => div.textContent.includes(config.researchMarkerText));
-      
+        .find((div) => div.textContent.includes(config.researchMarkerText));
       if (completedTextDiv) {
-        // Get the parent of the text, then the next sibling which should contain the content
         const parentElement = completedTextDiv.closest('.border-token-border-primary');
         if (parentElement && parentElement.nextElementSibling) {
           researchContent = parentElement.nextElementSibling;
         }
       }
-      
-      // If still not found, try to get all message content after the marker
-      if (!researchContent) {
-        const allMessages = articleElement.querySelectorAll('[data-message-author-role="assistant"]');
-        // Find the message after the one containing the "Research completed" text
-        for (let i = 0; i < allMessages.length; i++) {
-          if (allMessages[i].textContent.includes(config.researchMarkerText) && i + 1 < allMessages.length) {
-            researchContent = allMessages[i + 1];
-            break;
-          }
+    }
+
+    // Fallback #2: If still not found, look for the next assistant message
+    if (!researchContent) {
+      const allAssistantMessages = articleElement.querySelectorAll('[data-message-author-role="assistant"]');
+      for (let i = 0; i < allAssistantMessages.length; i++) {
+        if (
+          allAssistantMessages[i].textContent.includes(config.researchMarkerText) &&
+          i + 1 < allAssistantMessages.length
+        ) {
+          researchContent = allAssistantMessages[i + 1];
+          break;
         }
       }
     }
-    
+
     if (!researchContent) {
       log('Research content not found using any selector');
       return null;
     }
-    
-    // Clone the content so we don't modify the original
+
+    // Return a clone so we don't modify the original
     return researchContent.cloneNode(true);
   }
-  
+
   /**
-   * Generates a PDF using the browser's print dialog
+   * Generates the PDF by opening the print dialog in a new window with custom styles.
+   * @param {Node} content - The cloned research content
    */
   function generatePDF(content) {
     log('Generating PDF using browser print');
-    
-    // Create a clean, formatted container
-    const container = createFormattedContainer(content);
-    
-    // Get the title for the document
-    let documentTitle = 'ChatGPT Research Report';
-    const firstH1 = content.querySelector('h1');
-    if (firstH1) {
-      documentTitle = firstH1.textContent.trim();
-    }
-    
-    // Create a new window for printing
+
+    const formattedContainer = createFormattedContainer(content);
+    const documentTitle = getDocumentTitle(content);
+
+    // Open a new window for printing
     const printWindow = window.open('', '_blank');
-    
-    // Add necessary styles for a clean print output
-    printWindow.document.write(`
+    printWindow.document.write(getPrintWindowHtml(documentTitle));
+    printWindow.document.close();
+
+    // Inject the content once the new window has loaded
+    printWindow.onload = () => {
+      const contentDiv = printWindow.document.getElementById('research-content');
+      if (!contentDiv) {
+        printWindow.close();
+        hideLoadingIndicator();
+        alert('Error preparing content for printing.');
+        return;
+      }
+
+      // Insert the cloned content and trigger print
+      contentDiv.appendChild(formattedContainer.cloneNode(true));
+      setTimeout(() => {
+        printWindow.print();
+        hideLoadingIndicator();
+      }, 500);
+    };
+  }
+
+  /**
+   * Returns the appropriate title for the document (from the first H1 if present).
+   * @param {Node} content
+   * @returns {string}
+   */
+  function getDocumentTitle(content) {
+    let title = 'ChatGPT Research Report';
+    const firstH1 = content.querySelector('h1');
+    if (firstH1 && firstH1.textContent.trim()) {
+      title = firstH1.textContent.trim();
+    }
+    return title;
+  }
+
+  /**
+   * Returns the full HTML structure (as a string) for the print window.
+   * @param {string} documentTitle
+   * @returns {string}
+   */
+  function getPrintWindowHtml(documentTitle) {
+    return `
       <html>
         <head>
           <title>${documentTitle}</title>
-          <style>
-            /* Base styles */
-            body {
-              font-family: Arial, sans-serif;
-              line-height: 1.5;
-              color: #000000;
-              margin: 40px;
-              font-size: 12pt;
-            }
-            
-            /* Heading styles */
-            h1 {
-              font-size: 24pt;
-              color: #000000;
-              font-weight: 900;
-              margin-top: 20px;
-              margin-bottom: 15px;
-              page-break-after: avoid;
-            }
-            
-            h2 {
-              font-size: 20pt;
-              color: #000000;
-              font-weight: 800;
-              margin-top: 18px;
-              margin-bottom: 12px;
-              page-break-after: avoid;
-            }
-            
-            h3 {
-              font-size: 16pt;
-              color: #000000;
-              font-weight: 700;
-              margin-top: 15px;
-              margin-bottom: 10px;
-              page-break-after: avoid;
-            }
-            
-            /* Paragraph and list styles */
-            p {
-              margin-bottom: 10px;
-              text-align: justify;
-            }
-            
-            ul, ol {
-              margin-left: 20px;
-              margin-bottom: 15px;
-            }
-            
-            li {
-              margin-bottom: 5px;
-            }
-            
-            /* Link styles */
-            a {
-              color: #0055aa;
-              text-decoration: underline;
-            }
-            
-            /* Citation styles - make them look like badges with proper spacing */
-            .citation-item, .simplified-citation, sup, .citation-link, .citation-badge {
-              display: inline-block !important;
-              color: #0055aa !important;
-              background-color: #f2f7ff !important;
-              border: 1px solid #d0e3ff !important;
-              border-radius: 4px !important;
-              font-size: 0.8em !important;
-              padding: 0px 4px !important;
-              margin: 0 2px !important;
-              vertical-align: super !important;
-              line-height: 1.2 !important;
-              text-decoration: none !important;
-              white-space: nowrap !important;
-              font-weight: normal !important;
-            }
-            
-            /* Override any display property that might cause new lines */
-            .relative.inline-flex.items-center,
-            .inline-flex,
-            [data-citation-target] {
-              display: inline !important;
-              white-space: nowrap !important;
-              margin-left: 3px !important;
-            }
-            
-            /* Table styles */
-            table {
-              border-collapse: collapse;
-              width: 100%;
-              margin: 20px 0;
-              page-break-inside: avoid;
-            }
-            
-            th, td {
-              border: 1px solid #dddddd;
-              padding: 8px;
-              text-align: left;
-            }
-            
-            th {
-              background-color: #eeeeee;
-              color: #000000;
-              font-weight: bold;
-            }
-            
-            tr:nth-child(even) {
-              background-color: #f9f9f9;
-            }
-            
-            /* Code styles */
-            code, pre {
-              font-family: 'Consolas', 'Monaco', monospace;
-              background-color: #f5f5f5;
-              border: 1px solid #eeeeee;
-              border-radius: 3px;
-              padding: 2px 4px;
-              font-size: 90%;
-            }
-            
-            pre {
-              padding: 10px;
-              overflow-x: auto;
-              margin: 15px 0;
-              white-space: pre-wrap;
-            }
-            
-            /* Page break control */
-            .page-break {
-              page-break-after: always;
-            }
-            
-            /* Print-specific styles */
-            @media print {
-              body {
-                margin: 0;
-                padding: 15mm;
-              }
-              
-              a {
-                color: #000000;
-              }
-              
-              h1, h2, h3, h4, table, figure, img {
-                page-break-inside: avoid;
-              }
-            }
-            
-            /* Additional elements */
-            blockquote {
-              border-left: 4px solid #cccccc;
-              padding: 10px 15px;
-              margin: 15px 0;
-              background-color: #f9f9f9;
-            }
-            
-            img {
-              max-width: 100%;
-              height: auto;
-            }
-          </style>
+          <link rel="stylesheet" href="${chrome.runtime.getURL('css/print-styles.css')}">
         </head>
-        <body>
+        <body class="pdf-print">
           <div class="date-generated">Generated on ${new Date().toLocaleDateString()}</div>
           <div id="research-content"></div>
         </body>
       </html>
-    `);
-    
-    // Close the document to stop writing
-    printWindow.document.close();
-    
-    // Wait for the document to load, then inject the formatted content
-    printWindow.onload = function() {
-      // Get the container where we'll put the content
-      const contentDiv = printWindow.document.getElementById('research-content');
-      if (contentDiv) {
-        // Add the content to the print window
-        contentDiv.appendChild(container.cloneNode(true));
-        
-        // Wait a moment for rendering
-        setTimeout(() => {
-          // Show the print dialog
-          printWindow.print();
-          
-          // Hide the loading indicator after printing dialog is shown
-          hideLoadingIndicator();
-        }, 500);
-      } else {
-        printWindow.close();
-        hideLoadingIndicator();
-        alert('Error preparing content for printing.');
-      }
-    };
+    `;
   }
-  
+
   /**
-   * Creates a formatted container for the PDF content
+   * Creates and returns a <div> containing the research content with extra formatting/styling.
+   * @param {Node} content
+   * @returns {HTMLDivElement}
    */
   function createFormattedContainer(content) {
     log('Creating formatted container');
-    
-    // Create a container for the content
+
+    // Outer container
     const container = document.createElement('div');
     container.className = 'pdf-container';
-    
-    // Clone the content to avoid modifying the original
+
+    // Clone the content
     const clonedContent = content.cloneNode(true);
-    
-    // Fix citations with badge styling and proper spacing
+
+    // Fix citations
     fixCitationElements(clonedContent);
-    
-    // Remove unnecessary elements
+
+    // Remove elements we don't need in the final PDF
     const unnecessaryElements = clonedContent.querySelectorAll('.citation-actions, .cite-expanded');
-    unnecessaryElements.forEach(el => {
-      el.remove();
-    });
-    
-    // Force direct styling on elements to ensure they print properly
-    styleContentForPrinting(clonedContent);
-    
-    // Add the content to the container
+    unnecessaryElements.forEach((el) => el.remove());
+
     container.appendChild(clonedContent);
-    
     return container;
   }
-  
+
   /**
-   * Fix citation elements to ensure they stay inline with proper spacing
+   * Ensures citation elements display consistently and inline.
+   * @param {Node} element
    */
   function fixCitationElements(element) {
-    // Get all possible citation elements with a more comprehensive selector
-    const citations = element.querySelectorAll(
-      '.relative.inline-flex.items-center, [data-citation-target], .citation-item, .citation-link, sup, [role="button"][data-testid*="citation"], .simplified-citation, .citation-badge, [data-testid*="citation-wrapper"]'
-    );
-    
-    citations.forEach(citation => {
-      // Ensure there's proper spacing before the citation
+    const citationSelector = `
+      .relative.inline-flex.items-center,
+      [data-citation-target],
+      .citation-item,
+      .citation-link,
+      sup,
+      [role="button"][data-testid*="citation"],
+      .simplified-citation,
+      .citation-badge,
+      [data-testid*="citation-wrapper"]
+    `;
+    const citations = element.querySelectorAll(citationSelector);
+
+    citations.forEach((citation) => {
+      // Ensure spacing before the citation
       if (citation.previousSibling && citation.previousSibling.nodeType === Node.TEXT_NODE) {
-        const textContent = citation.previousSibling.textContent;
-        if (textContent && !textContent.endsWith(' ')) {
-          citation.previousSibling.textContent = textContent + ' ';
+        const txt = citation.previousSibling.textContent;
+        if (txt && !txt.endsWith(' ')) {
+          citation.previousSibling.textContent = `${txt} `;
         }
       }
-      
-      // Make the citation display inline with text
-      citation.style.display = 'inline';
-      citation.style.whiteSpace = 'nowrap';
-      
-      // Find the actual citation number/text
-      let citationText = citation.textContent.trim();
-      // Clean up any extra characters that might be in the citation
-      citationText = citationText.replace(/[\[\](){}]/g, '').trim();
-      
-      // Create a new badge-style element
-      const badgeSpan = document.createElement('span');
-      badgeSpan.className = 'citation-badge';
-      badgeSpan.textContent = citationText;
-      
-      // Apply direct styling to make it look like a badge
-      badgeSpan.style.display = 'inline-block';
-      badgeSpan.style.color = '#0055aa';
-      badgeSpan.style.backgroundColor = '#f2f7ff';
-      badgeSpan.style.border = '1px solid #d0e3ff';
-      badgeSpan.style.borderRadius = '4px';
-      badgeSpan.style.padding = '0px 4px';
-      badgeSpan.style.margin = '0 2px';
-      badgeSpan.style.fontSize = '0.8em';
-      badgeSpan.style.verticalAlign = 'super';
-      badgeSpan.style.lineHeight = '1.2';
-      badgeSpan.style.whiteSpace = 'nowrap';
-      badgeSpan.style.textDecoration = 'none';
-      badgeSpan.style.fontWeight = 'normal';
-      
-      // Handle specific citation types
+
+      // Clean up the text
+      let citationText = citation.textContent.replace(/[\[\](){}]/g, '').trim();
+
+      // Create a uniform badge element
+      const badgeSpan = createCitationBadgeElement(citationText);
+
+      // If the citation is or contains a button, handle differently
       if (citation.querySelector('button, [role="button"]')) {
-        // If the citation contains a button, replace just the button
         const buttons = citation.querySelectorAll('button, [role="button"]');
-        buttons.forEach(button => {
-          button.parentNode.replaceChild(badgeSpan.cloneNode(true), button);
+        buttons.forEach((btn) => {
+          btn.parentNode.replaceChild(badgeSpan.cloneNode(true), btn);
         });
-      } else if (citation.tagName.toLowerCase() === 'sup' || 
-                citation.classList.contains('citation-item') || 
-                citation.classList.contains('simplified-citation')) {
-        // For simple citation elements, replace the entire element
+      } else if (
+        citation.tagName.toLowerCase() === 'sup' ||
+        citation.classList.contains('citation-item') ||
+        citation.classList.contains('simplified-citation')
+      ) {
+        // Replace the entire node
         if (citation.parentNode) {
           citation.parentNode.replaceChild(badgeSpan, citation);
         }
       } else {
-        // For other containers, preserve the container but replace its content
+        // Replace the contents - don't add the class since we're replacing the content
         citation.innerHTML = '';
         citation.appendChild(badgeSpan);
       }
     });
-    
-    // Also handle any remaining numeric citations that might be in superscript
-    const superscripts = element.querySelectorAll('sup');
-    superscripts.forEach(sup => {
-      // Check if this looks like a citation (just numbers)
-      if (/^\d+$/.test(sup.textContent.trim())) {
-        const badgeSpan = document.createElement('span');
-        badgeSpan.className = 'citation-badge';
-        badgeSpan.textContent = sup.textContent.trim();
-        
-        // Apply the same badge styling
-        badgeSpan.style.display = 'inline-block';
-        badgeSpan.style.color = '#0055aa';
-        badgeSpan.style.backgroundColor = '#f2f7ff';
-        badgeSpan.style.border = '1px solid #d0e3ff';
-        badgeSpan.style.borderRadius = '4px';
-        badgeSpan.style.padding = '0px 4px';
-        badgeSpan.style.margin = '0 2px';
-        badgeSpan.style.fontSize = '0.8em';
-        badgeSpan.style.verticalAlign = 'super';
-        badgeSpan.style.lineHeight = '1.2';
-        badgeSpan.style.whiteSpace = 'nowrap';
-        badgeSpan.style.textDecoration = 'none';
-        badgeSpan.style.fontWeight = 'normal';
-        
-        sup.parentNode.replaceChild(badgeSpan, sup);
-      }
-    });
+
+    // Also handle numeric citations in <sup>
+    fixNumericSuperscripts(element);
   }
-  
+
   /**
-   * Apply direct styling to content for better printing
+   * Creates a span element styled as a citation badge.
+   * @param {string} text
+   * @returns {HTMLSpanElement}
    */
-  function styleContentForPrinting(element) {
-    // Apply styling to headings
-    const headings = element.querySelectorAll('h1, h2, h3, h4, h5, h6');
-    headings.forEach(heading => {
-      heading.style.color = '#000000';
-      heading.style.pageBreakAfter = 'avoid';
-      heading.style.pageBreakInside = 'avoid';
-      
-      switch(heading.tagName.toLowerCase()) {
-        case 'h1':
-          heading.style.fontSize = '24pt';
-          heading.style.fontWeight = '900';
-          break;
-        case 'h2':
-          heading.style.fontSize = '20pt';
-          heading.style.fontWeight = '800';
-          break;
-        case 'h3':
-          heading.style.fontSize = '16pt';
-          heading.style.fontWeight = '700';
-          break;
-        default:
-          heading.style.fontWeight = 'bold';
+  function createCitationBadgeElement(text) {
+    const badgeSpan = document.createElement('span');
+    badgeSpan.className = 'citation-badge';
+    badgeSpan.textContent = text;
+    return badgeSpan;
+  }
+
+  /**
+   * Replaces numeric <sup> elements with styled badge elements if they look like citations.
+   * @param {Node} element
+   */
+  function fixNumericSuperscripts(element) {
+    const superscripts = element.querySelectorAll('sup');
+    superscripts.forEach((sup) => {
+      const text = sup.textContent.trim();
+      if (/^\d+$/.test(text)) {
+        const badgeSpan = createCitationBadgeElement(text);
+        if (sup.parentNode) {
+          sup.parentNode.replaceChild(badgeSpan, sup);
+        }
       }
-    });
-    
-    // Enhanced styling for citations to ensure they appear as badges
-    const allCitationElements = element.querySelectorAll('.citation-badge, .citation-item, .citation-link, sup[data-footnote-ref], [data-testid*="citation"]');
-    allCitationElements.forEach(cite => {
-      cite.style.display = 'inline-block';
-      cite.style.color = '#0055aa';
-      cite.style.backgroundColor = '#f2f7ff';
-      cite.style.border = '1px solid #d0e3ff';
-      cite.style.borderRadius = '4px';
-      cite.style.padding = '0px 4px';
-      cite.style.margin = '0 2px';
-      cite.style.fontSize = '0.8em';
-      cite.style.verticalAlign = 'super';
-      cite.style.lineHeight = '1.2';
-      cite.style.whiteSpace = 'nowrap';
-      cite.style.textDecoration = 'none';
-      cite.style.fontWeight = 'normal';
-    });
-    
-    // Fix citation containers
-    const citationContainers = element.querySelectorAll('.relative.inline-flex.items-center, [data-citation-target]');
-    citationContainers.forEach(container => {
-      container.style.display = 'inline';
-      container.style.whiteSpace = 'nowrap';
-    });
-    
-    // Style paragraphs and text
-    const paragraphs = element.querySelectorAll('p, li, td, th, div:not(.citation-item)');
-    paragraphs.forEach(p => {
-      p.style.color = '#000000';
-    });
-    
-    // Handle tables specifically
-    const tables = element.querySelectorAll('table');
-    tables.forEach(table => {
-      table.style.pageBreakInside = 'avoid';
-      table.style.borderCollapse = 'collapse';
-      table.style.width = '100%';
-      
-      const cells = table.querySelectorAll('td, th');
-      cells.forEach(cell => {
-        cell.style.border = '1px solid #dddddd';
-        cell.style.padding = '8px';
-        cell.style.color = '#000000';
-      });
-      
-      const headers = table.querySelectorAll('th');
-      headers.forEach(header => {
-        header.style.backgroundColor = '#eeeeee';
-        header.style.fontWeight = 'bold';
-      });
-    });
-    
-    // Improve code block formatting
-    const codeBlocks = element.querySelectorAll('pre, code');
-    codeBlocks.forEach(block => {
-      block.style.fontFamily = 'Consolas, Monaco, monospace';
-      block.style.backgroundColor = '#f5f5f5';
-      block.style.padding = block.tagName.toLowerCase() === 'pre' ? '10px' : '2px 4px';
-      block.style.borderRadius = '3px';
-      block.style.border = '1px solid #eeeeee';
-      
-      if (block.tagName.toLowerCase() === 'pre') {
-        block.style.whiteSpace = 'pre-wrap';
-        block.style.overflowX = 'auto';
-      }
-    });
-    
-    // Make images responsive
-    const images = element.querySelectorAll('img');
-    images.forEach(img => {
-      img.style.maxWidth = '100%';
-      img.style.height = 'auto';
-      img.style.pageBreakInside = 'avoid';
     });
   }
-  
-  // Initialize the extension
+
+  // ---------------------
+  // Loading Indicator
+  // ---------------------
+  /**
+   * Shows a loading indicator at the top of the page while generating the PDF.
+   */
+  function showLoadingIndicator() {
+    // Remove existing indicator if any
+    const existing = document.getElementById(config.loadingIndicatorId);
+    if (existing) existing.remove();
+
+    // Create loading indicator
+    const indicator = document.createElement('div');
+    indicator.id = config.loadingIndicatorId;
+
+    indicator.innerHTML = `
+      <div class="loading-container">
+        <svg
+          width="24"
+          height="24"
+          viewBox="0 0 24 24"
+          xmlns="http://www.w3.org/2000/svg"
+          class="loading-spinner"
+        >
+          <circle cx="12" cy="12" r="10" stroke="white" stroke-width="4" fill="none" stroke-dasharray="30 10" />
+        </svg>
+        <span>Generating PDF...</span>
+      </div>
+    `;
+
+    document.body.appendChild(indicator);
+  }
+
+  /**
+   * Hides the loading indicator.
+   */
+  function hideLoadingIndicator() {
+    const indicator = document.getElementById(config.loadingIndicatorId);
+    if (indicator) indicator.remove();
+  }
+
+  // ---------------------
+  // DOM Ready
+  // ---------------------
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
   } else {
     init();
   }
-})(); 
+})();
